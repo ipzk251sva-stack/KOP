@@ -1,0 +1,20 @@
+import { build } from 'esbuild';
+import { renderToStaticMarkup } from 'react-dom/server';
+import React from 'react';
+import assert from 'node:assert/strict';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
+await mkdir(resolve('node_modules/.qa'), { recursive: true });
+await build({ entryPoints: ['src/App.jsx'], bundle: true, platform: 'node', format: 'esm', jsx: 'automatic', packages: 'external', outfile: 'node_modules/.qa/App.mjs', preserveSymlinks: true });
+const { default: App } = await import('../node_modules/.qa/App.mjs');
+const markup = renderToStaticMarkup(React.createElement(App));
+assert.equal((markup.match(/class="kpi-card"/g) ?? []).length, 3);
+assert.equal((markup.match(/<tbody>/g) ?? []).length, 1);
+assert.equal((markup.match(/<tr>/g) ?? []).length, 8);
+assert.ok(markup.includes('Космічні запуски'));
+assert.ok(markup.includes('15 жовтня'));
+assert.ok(markup.includes('aria-checked="false"'));
+assert.ok(markup.includes('Показано 7 із 7'));
+await writeFile('node_modules/.qa/initial-render.html', markup);
+console.log('Initial React render verified: 3 KPI cards, 7 mission rows, initial switch and filter state.');
